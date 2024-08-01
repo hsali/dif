@@ -70,6 +70,7 @@ etl_config = {
                 "dbtable": "customer",
             },
         },
+        "transformations": [],
         "extract_callback": extract,
         "transform_callback": transform,
         "load_callback": load,  # list of callback
