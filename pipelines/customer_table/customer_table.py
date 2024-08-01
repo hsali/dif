@@ -55,6 +55,10 @@ def load(data, sink, spark=None):
         raise ValueError("Unsupported sink type")
 
 
+etl_dags = {
+    'jobs_order': ['job1', 'job2'],
+}
+
 etl_config = {
     "job1": {
         "source": {
