@@ -1,7 +1,8 @@
 import logging
 import copy
+import configs
 
-# from pyspark.sql import SparkSession
+from pyspark.sql import SparkSession
 
 # logging
 logging.basicConfig(level=logging.INFO)
@@ -17,13 +18,53 @@ class CustomLoggerAdapter(logging.LoggerAdapter):
         return "[%s] %s" % (self.extra["prefix"], msg), kwargs
 
 
+class SingletonMeta(type):
+    """
+    The Singleton class can be implemented in different ways in Python. Some
+    possible methods include: base class, decorator, metaclass. We will use the
+    metaclass because it is best suited for this purpose.
+    """
+
+    _instances = {}
+
+    def __call__(cls, *args, **kwargs):
+        """
+        Possible changes to the value of the `__init__` argument do not affect
+        the returned instance.
+        """
+        if cls not in cls._instances:
+            instance = super().__call__(*args, **kwargs)
+            cls._instances[cls] = instance
+        return cls._instances[cls]
+
+
+class SparkSingletonInstance(metaclass=SingletonMeta):
+    def some_business_logic(self):
+        """
+        Finally, any singleton should define some business logic, which can be
+        executed on its instance.
+        """
+        # ...
+        pass
+
+    def __init__(self, app_name="DIF ETL Job") -> None:
+        logger.info("Initializing Spark Singleton Instance")
+        self.app_name = app_name
+        self.spark = SparkSession.builder.appName(self.app_name).getOrCreate()
+        self.sc = self.spark.sparkContext
+        self.sqlContext = self.spark.sqlContext
+
+
 class BaseETLJob:
     def __init__(self, config, app_name="DIF ETL Job"):
-        self.spark = None
+
+        self.sparkInstance = SparkSingletonInstance()
+        self.spark = self.sparkInstance.spark
         self.app_name = app_name
         self.config = config
         self.df = None
         self.df_name = "df"
+        self.shared_context = {}
 
     def initialize_spark(self):
         self.spark = SparkSession.builder.appName(self.app_name).getOrCreate()
@@ -32,17 +73,27 @@ class BaseETLJob:
         logging.basicConfig(level=logging.INFO)
         logger = logging.getLogger(__name__)
 
-    def extract(self, source):
+    def extract(self, source, extract_callback=None):
         logger.info("Extracting data from source: {}".format(source))
-        # Add your code to extract data from the source
-        self.df = (
-            self.spark.read.format(source["type"])
-            .options(**source.get("options"))
-            .load()
-        )
+
+        if extract_callback:
+            logger.info("Extracting data using custom callback function")
+            self.df = extract_callback(self, source=source)
+            logger.info("Extracted data using custom callback function")
+        else:
+            self.df = (
+                self.spark.read.format(source["type"])
+                .options(**source.get("options"))
+                .load()
+            )
         self.spark.registerDataFrameAsTable(self.df, self.df_name)
 
-    def transform(self, transformations):
+    def transform(self, transformations, transform_callback=None):
+        if transform_callback:
+            logger.info("Transforming data using custom callback function")
+            self.df = transform_callback(self, transformations=transformations)
+            logger.info("Transformed data using custom callback function")
+            return
         if len(transformations) == 0:
             logger.info("No transformations to perform")
             return
@@ -67,7 +118,7 @@ class BaseETLJob:
             self.spark.registerDataFrameAsTable(self.df, transformation["name"])
         # logger prefix removed based on transformation["name"]
 
-    def load(self, sink):
+    def load(self, sink, load_callback=None):
         logger.info("Loading data to target: {}".format(sink))
         # print options in beautify format
         logger.info(f"Options: {sink.get('options')}")
@@ -75,8 +126,6 @@ class BaseETLJob:
         self.df.write.format(sink["type"]).options(**sink.get("options")).save()
 
     def run(self, job_name):
-        # self.initialize_spark()
-        self.load_configuration()
         self.extract(self.config.etl_config[job_name]["source"])
         self.transform(self.config.etl_config[job_name].get("transformations"))
         self.load(self.config.etl_config[job_name]["sink"])
@@ -95,6 +144,38 @@ def load_configuration(pipeline_name="pipelines/customer_table/customer_table.py
 
 def configuration_validator(config):
     # Validate the configuration
+    logger.info("Validating the configuration")
+    # print configuration dict in beautify format
+    logger.info(f"Configuration: {config}")
+    # Check if the configuration has the required attributes
+    if not hasattr(config, "etl_config"):
+        raise ValueError("Configuration must contain 'etl_config' attribute")
+    if not isinstance(config.etl_config, dict):
+        raise ValueError("'etl_config' must be a dictionary")
+    for job_name, job_config in config.etl_config.items():
+        if not isinstance(job_config, dict):
+            raise ValueError(f"Job configuration for '{job_name}' must be a dictionary")
+        if "source" not in job_config:
+            raise ValueError(
+                f"Job configuration for '{job_name}' must contain 'source'"
+            )
+        if "sink" not in job_config:
+            raise ValueError(f"Job configuration for '{job_name}' must contain 'sink'")
+    logger.info("Configuration is valid")
+    return config
+
+
+def configuration_transformation(config):
+    # Parse the configuration
+    logger.info("Parsing the configuration")
+    for job_name, job_config in config.etl_config.items():
+        if "transformations" in job_config:
+            transformations = job_config["transformations"]
+            for transformation in transformations:
+                transformation["sql"] = transformation.get("sql", "")
+                transformation["name"] = transformation.get("name", "")
+
+    logger.info("Configuration is parsed")
     return config
 
 
