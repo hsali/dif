@@ -5,7 +5,7 @@
 # SINK : csv, json, jdbc, parquet, avro, orc, delta, hudi, kudu, kafka, elastic, cassandra, hbase, mongodb, redis, s3, azure_blob, gcs, bigquery, snowflake, redshift, athena, dremio, drill, presto, hive, impala, teradata, db2, mssql, mysql, oracle, postgres, sqlite, h2, firebird, clickhouse, vertica, greenplum, netezza, sybase, informix, salesforce, zendesk, jira, servicenow, hubspot, pipelinewise, singer, dbt
 
 
-def extract(spark, source):
+def extract1(spark, source):
     if source["type"] == "csv":
         return spark.read.csv(source["path"], header=True, inferSchema=True)
     elif source["type"] == "json":
@@ -23,6 +23,10 @@ def extract(spark, source):
         )
     else:
         raise ValueError("Unsupported source type")
+
+
+def extract():
+    print("extract")
 
 
 def transform(data, transformations):
@@ -67,7 +71,29 @@ etl_config = {
             },
         },
         "extract_callback": extract,
-        "transform_callback": extract,
-        "load_callback": transform,  # list of callback
-    }
+        "transform_callback": transform,
+        "load_callback": load,  # list of callback
+    },
+    "job2": {
+        "source": {
+            "type": "spark_sql",
+            "sql": "select * from customer",
+            "options": {
+                "database": "shopify",
+                "table": "customer",
+                "user": "user",
+                "password": "password",
+                "url": "jdbc:postgresql://localhost:5432/mydb",
+            },
+        },
+        "sink": {
+            "type": "jdbc",
+            "connection": "shopify_abc1",
+            "database_type": "mysql",  # postgress, oracle, mssql
+            "options": {
+                "url": "jdbc:postgresql://localhost:5432/mydb",
+                "dbtable": "customer",
+            },
+        },
+    },
 }

@@ -1,14 +1,17 @@
 import logging
-from pyspark.sql import SparkSession
+
+# from pyspark.sql import SparkSession
 
 # logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Define the ETL class
+# job -. read source -> transform(s) -> write to target
+# Jobs - job1, job2, job3
 
 
-class BaseETL:
+class BaseETLJob:
     def __init__(self, pipeline_name, app_name="DIF ETL Job"):
         self.spark = None
         self.app_name = app_name
@@ -32,13 +35,22 @@ class BaseETL:
         logger.info("Loading data to target: {}".format(target_path))
         # Add your code to load the transformed data to the target
 
-    def run(self, source_path, target_path):
-        self.initialize_spark()
-        self.initialize_logger()
+    def load_configuration(self):
+        # Load the configuration
+        import importlib.util
 
-        self.extract(source_path)
+        spec = importlib.util.spec_from_file_location(
+            "etl_config", "pipelines/customer_table/customer_table.py"
+        )
+        self.config = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(self.config)
+
+    def run(self, job_name):
+        # self.initialize_spark()
+        self.load_configuration()
+        self.extract(self.config.etl_config[job_name]["source"])
         self.transform()
-        self.load(target_path)
+        self.load()
 
         self.spark.stop()
 
