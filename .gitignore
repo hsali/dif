@@ -1,0 +1,28 @@
+# Python
+*.pyc
+__pycache__/
+venv/
+env/
+dist/
+build/
+*.egg-info/
+*.egg
+
+# Spark
+*.log
+*.out
+*.pid
+*.gz
+*.tar
+*.zip
+*.bz2
+*.xz
+*.lzo
+*.snappy
+*.avro
+*.orc
+*.parquet
+*.orc/
+*.parquet/
+metastore_db/
+derby.log
