@@ -19,9 +19,9 @@ sink
   * MySQL
 
 Features
-[] python configuration
-[] write multiple sources
-[] read multiple sources 
+[x] python configuration
+[x] write multiple sources
+[x] read multiple sources 
 [] custom callback function extract / transform / load
 [] logging file
 [] database logging
@@ -31,3 +31,8 @@ Features
 [] CI/CD
 [] documentation
 [] examples
+
+
+# packages 
+   python -m pip install "pydantic[email]"
+   python -m pip install pydantic-settings

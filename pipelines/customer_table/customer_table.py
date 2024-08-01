@@ -68,6 +68,7 @@ etl_config = {
             "sql": "select * from customer",
         },
         "sink": {
+            "name": 'sink1',
             "type": "jdbc",
             "options": {
                 "url": "jdbc:postgresql://localhost:5432/mydb",
@@ -93,6 +94,7 @@ etl_config = {
         },
         "sink": {
             "type": "jdbc",
+            "name": 'sink1',
             "connection": "shopify_abc1",
             "database_type": "mysql",  # postgress, oracle, mssql
             "options": {

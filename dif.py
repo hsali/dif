@@ -122,8 +122,26 @@ class BaseETLJob:
         logger.info("Loading data to target: {}".format(sink))
         # print options in beautify format
         logger.info(f"Options: {sink.get('options')}")
-        # Add your code to load the transformed data to the target
-        self.df.write.format(sink["type"]).options(**sink.get("options")).save()
+        # Add your code to load the transformed data to the target'
+        if load_callback:
+            logger.info("Loading data using custom callback function")
+            load_callback(self, sink=sink)
+            logger.info("Loaded data using custom callback function")
+            return
+        if sink is dict:
+            logger.info("Loading data using default callback function")
+            # handle partitions and bucketing
+            self.df.write.format(sink["type"]).options(**sink.get("options")).save()
+            logger.info("Loaded data using default callback function")
+        elif sink is list:
+            for sink_config in sink:
+                adapter = CustomLoggerAdapter(logger, {"prefix": sink_config["name"]})
+                adapter.info(f"sink_options: {sink_config}")
+                adapter.info(f"Loading data using default callback function")
+                self.df.write.format(sink_config["type"]).options(
+                    **sink_config.get("options")
+                ).save()
+                adapter.info(f"Loaded data using default callback function")
 
     def run(self, job_name):
         self.extract(self.config.etl_config[job_name]["source"])
